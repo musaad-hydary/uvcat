@@ -213,11 +213,6 @@ export const PALETTES: Palette[] = [
       "#55ff55",
     ],
   },
-  {
-    id: "custom",
-    name: "Custom",
-    colors: ["#f080a0", "#c878a0", "#3a1428", "#1a0a12", "#ffffff", "#000000"],
-  },
 ];
 
 // ─── Nearest color matching ───────────────────────────────────────────────────
