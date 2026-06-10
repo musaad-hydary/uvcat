@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# UVCAT
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A PS1-style texture mapper for 3D models. Load a GLB, pick faces, apply retro textures, export.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+UVCAT has two modes:
 
-## React Compiler
+**Texture Mode** processes images through a PS1 pipeline. Control resolution, color depth, dithering, UV warping, and color palettes to produce authentic retro textures.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Model Mode** loads GLB files and lets you paint processed textures onto individual faces of the mesh. Faces are selected using flood-fill picking, which automatically finds coplanar triangles that form a logical face.
 
-## Expanding the ESLint configuration
+## How UV mapping works
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+When you pick a face, the app computes the UV bounding box of that face's triangles. When you upload a texture, it gets drawn into that UV region on a composite canvas that covers the whole mesh. This means textures always land in the right place without needing to modify the geometry.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Exporting
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **GLB** packs all composite canvases into an atlas, remaps UVs to atlas space, and exports a self-contained GLB with baked textures
+- **PNG** exports the raw texture atlas sheet
+- **GIF** renders 24 frames of the model spinning and encodes them as an animated GIF with transparent background
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Stack
+
+- React + TypeScript + Vite
+- Three.js for 3D rendering, raycasting, and GLB loading
+- Custom flood-fill algorithm for face selection
+- gif.js for animated GIF encoding
+- Pure CSS Persona 5 inspired UI with clip-path panels and scanline overlay
+
+## Running locally
+
+```bash
+npm install
+cp node_modules/gif.js/dist/gif.worker.js public/gif.worker.js
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Building
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+Deploy the `dist/` folder to any static host. No backend required.
+
+## Keyboard shortcuts
+
+- `Ctrl+Z` / `Cmd+Z` - undo last face pick or texture change
+- `?` button in topbar - open help modal
+- Sun/moon button - toggle light and dark mode
