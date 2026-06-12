@@ -215,7 +215,6 @@ export default function Viewport({
       const seedTriIndex = hit.faceIndex ?? 0;
       const triIndices = floodFillFace(mesh.geometry, seedTriIndex);
 
-      // deduplication — if any triangle overlaps an existing face, select it
       const triSet = new Set(triIndices);
       const existing = facesRef.current.find(
         (f) =>
@@ -352,18 +351,21 @@ export default function Viewport({
             }
           });
 
-          scene.add(model);
-          rootRef.current = model;
+          // ── pivot group for centered GIF spin ─────────────────────────────
+          const pivot = new THREE.Group();
+          scene.add(pivot);
+          pivot.add(model);
 
-          // ── auto-fit camera to model bounding box ──────────────────────────
+          // compute bounding box and center model inside pivot
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
-
-          // center model at origin
           model.position.sub(center);
 
-          // compute camera distance so model fills ~67% of view (1.5x padding)
+          // store pivot as root so GIF spin rotates around true center
+          rootRef.current = pivot;
+
+          // auto-fit camera
           const maxDim = Math.max(size.x, size.y, size.z);
           const fov = camera.fov * (Math.PI / 180);
           const camDist = (maxDim / 2 / Math.tan(fov / 2)) * 1.5;
@@ -525,8 +527,8 @@ export default function Viewport({
       const renderer = rendererRef.current;
       const scene = sceneRef.current;
       const camera = cameraRef.current;
-      const model = rootRef.current;
-      const steps = 24;
+      const pivot = rootRef.current;
+      const steps = 35;
 
       const GIF = (await import("gif.js")).default;
       const gif = new GIF({
@@ -537,21 +539,28 @@ export default function Viewport({
         background: "#000000",
       });
 
-      const origY = model.rotation.y;
+      const origY = pivot.rotation.y;
+      const origPixelRatio = renderer.getPixelRatio();
+
       if (highlightRef.current) highlightRef.current.visible = false;
 
+      renderer.setPixelRatio(0.1);
+
       for (let i = 0; i < steps; i++) {
-        model.rotation.y = (i / steps) * Math.PI * 2;
+        pivot.rotation.y = (i / steps) * Math.PI * 2;
         renderer.render(scene, camera);
         const frame = document.createElement("canvas");
         frame.width = renderer.domElement.width;
         frame.height = renderer.domElement.height;
-        frame.getContext("2d")!.drawImage(renderer.domElement, 0, 0);
-        gif.addFrame(frame, { delay: 80, copy: true });
+        const fctx = frame.getContext("2d")!;
+        fctx.imageSmoothingEnabled = false;
+        fctx.drawImage(renderer.domElement, 0, 0);
+        gif.addFrame(frame, { delay: 100, copy: true });
       }
 
-      model.rotation.y = origY;
+      pivot.rotation.y = origY;
       if (highlightRef.current) highlightRef.current.visible = true;
+      renderer.setPixelRatio(origPixelRatio);
 
       gif.on("finished", (blob: Blob) => {
         const url = URL.createObjectURL(blob);
